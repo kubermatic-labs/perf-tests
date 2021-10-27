@@ -272,9 +272,9 @@ func getWorkerPodIP(worker string) string {
 	return workerStateMap[worker].IP
 }
 
-func allocateWorkToClient(workerS *workerState, reply *WorkItem) {
+func allocateWorkToClient(workerState *workerState, workItem *WorkItem) {
 	if !allWorkersIdle() {
-		reply.IsIdle = true
+		workItem.IsIdle = true
 		return
 	}
 
@@ -283,30 +283,30 @@ func allocateWorkToClient(workerS *workerState, reply *WorkItem) {
 		if v.Finished {
 			continue
 		}
-		if v.SourceNode != workerS.worker {
-			reply.IsIdle = true
+		if v.SourceNode != workerState.worker {
+			workItem.IsIdle = true
 			return
 		}
 		if _, ok := workerStateMap[v.DestinationNode]; !ok {
-			reply.IsIdle = true
+			workItem.IsIdle = true
 			return
 		}
 		fmt.Printf("Requesting jobrun '%s' from %s to %s for MSS %d for MsgSize %d\n", v.Label, v.SourceNode, v.DestinationNode, v.MSS, v.MsgSize)
-		reply.ClientItem.Type = v.Type
-		reply.IsClientItem = true
-		workerS.idle = false
+		workItem.ClientItem.Type = v.Type
+		workItem.IsClientItem = true
+		workerState.idle = false
 		currentJobIndex = n
 
 		if !v.ClusterIP {
-			reply.ClientItem.Host = getWorkerPodIP(v.DestinationNode)
+			workItem.ClientItem.Host = getWorkerPodIP(v.DestinationNode)
 		} else {
-			reply.ClientItem.Host = os.Getenv("NETPERF_W2_SERVICE_HOST")
+			workItem.ClientItem.Host = os.Getenv("NETPERF_W2_SERVICE_HOST")
 		}
 
 		switch {
 		case v.Type == iperfTCPTest || v.Type == iperfUDPTest || v.Type == iperfSctpTest:
-			reply.ClientItem.Port = "5201"
-			reply.ClientItem.MSS = v.MSS
+			workItem.ClientItem.Port = "5201"
+			workItem.ClientItem.MSS = v.MSS
 
 			v.MSS = v.MSS + mssStepSize
 			if v.MSS > mssMax {
@@ -314,14 +314,14 @@ func allocateWorkToClient(workerS *workerState, reply *WorkItem) {
 			}
 			return
 		case v.Type == qperfTCPTest:
-			reply.ClientItem.MsgSize = v.MsgSize
+			workItem.ClientItem.MsgSize = v.MsgSize
 			v.MsgSize <<= 1
 			if v.MsgSize > msgSizeMax {
 				v.Finished = true
 			}
 			return
 		case v.Type == netperfTest:
-			reply.ClientItem.Port = "12865"
+			workItem.ClientItem.Port = "12865"
 			return
 		}
 	}
@@ -338,11 +338,11 @@ func allocateWorkToClient(workerS *workerState, reply *WorkItem) {
 		datapointsFlushed = true
 	}
 
-	reply.IsIdle = true
+	workItem.IsIdle = true
 }
 
 // RegisterClient registers a single and assign a work item to it
-func (t *NetPerfRPC) RegisterClient(data *ClientRegistrationData, reply *WorkItem) error {
+func (t *NetPerfRPC) RegisterClient(data *ClientRegistrationData, workItem *WorkItem) error {
 	globalLock.Lock()
 	defer globalLock.Unlock()
 
@@ -352,9 +352,9 @@ func (t *NetPerfRPC) RegisterClient(data *ClientRegistrationData, reply *WorkIte
 		// For new clients, trigger an iperf server start immediately
 		state = &workerState{sentServerItem: true, idle: true, IP: data.IP, worker: data.Worker}
 		workerStateMap[data.Worker] = state
-		reply.IsServerItem = true
-		reply.ServerItem.ListenPort = "5201"
-		reply.ServerItem.Timeout = 3600
+		workItem.IsServerItem = true
+		workItem.ServerItem.ListenPort = "5201"
+		workItem.ServerItem.Timeout = 3600
 		return nil
 	}
 
@@ -362,7 +362,7 @@ func (t *NetPerfRPC) RegisterClient(data *ClientRegistrationData, reply *WorkIte
 	state.idle = true
 
 	// Give the worker a new work item or let it idle loop another 5 seconds
-	allocateWorkToClient(state, reply)
+	allocateWorkToClient(state, workItem)
 	return nil
 }
 
