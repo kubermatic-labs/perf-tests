@@ -53,6 +53,7 @@ var host string
 var worker string
 var kubenode string
 var podname string
+var testFrom, testTo int
 
 var workerStateMap map[string]*workerState
 
@@ -162,6 +163,8 @@ func init() {
 	flag.StringVar(&mode, "mode", "worker", "Mode for the daemon (worker | orchestrator)")
 	flag.StringVar(&port, "port", rpcServicePort, "Port to listen on (defaults to 5202)")
 	flag.StringVar(&host, "host", "", "IP address to bind to (defaults to 0.0.0.0)")
+	flag.IntVar(&testFrom, "testFrom", 0, "start from test number testFrom")
+	flag.IntVar(&testTo, "testTo", 5, "end at test number testTo")
 
 	workerStateMap = make(map[string]*workerState)
 	testcases = []*testcase{
@@ -192,6 +195,7 @@ func init() {
 		{SourceNode: "netperf-w3", DestinationNode: "netperf-w2", Label: "18 netperf. Remote VM using Virtual IP", Type: netperfTest, ClusterIP: true},
 	}
 
+	testcases = testcases[testFrom:testTo]
 	currentJobIndex = 0
 
 	// Regexes to parse the Mbits/sec out of iperf TCP, SCTP, UDP and netperf output
