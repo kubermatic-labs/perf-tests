@@ -64,6 +64,8 @@ var (
 
 	primaryNode   api.Node
 	secondaryNode api.Node
+
+	testFrom, testTo int
 )
 
 func init() {
@@ -77,6 +79,8 @@ func init() {
 		"Location of the kube configuration file ($HOME/.kube/config")
 	flag.BoolVar(&cleanupOnly, "cleanup", false,
 		"(boolean) Run the cleanup resources phase only (use this flag to clean up orphaned resources from a test run)")
+	flag.IntVar(&testFrom, "testFrom", 0, "start from test number testFrom")
+	flag.IntVar(&testTo, "testTo", 5, "end at test number testTo")
 }
 
 func setupClient() *kubernetes.Clientset {
@@ -254,10 +258,14 @@ func createRCs(c *kubernetes.Clientset) bool {
 				Spec: api.PodSpec{
 					Containers: []api.Container{
 						{
-							Name:            name,
-							Image:           netperfImage,
-							Ports:           []api.ContainerPort{{ContainerPort: orchestratorPort}},
-							Args:            []string{"--mode=orchestrator"},
+							Name:  name,
+							Image: netperfImage,
+							Ports: []api.ContainerPort{{ContainerPort: orchestratorPort}},
+							Args: []string{
+								"--mode=orchestrator",
+								fmt.Sprintf("--testFrom=%d", testFrom),
+								fmt.Sprintf("--testTo=%d", testTo),
+							},
 							ImagePullPolicy: "Always",
 						},
 					},

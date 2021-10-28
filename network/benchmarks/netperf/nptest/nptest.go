@@ -195,7 +195,6 @@ func init() {
 		{SourceNode: "netperf-w3", DestinationNode: "netperf-w2", Label: "18 netperf. Remote VM using Virtual IP", Type: netperfTest, ClusterIP: true},
 	}
 
-	testcases = testcases[testFrom:testTo]
 	currentJobIndex = 0
 
 	// Regexes to parse the Mbits/sec out of iperf TCP, SCTP, UDP and netperf output
@@ -226,6 +225,7 @@ func main() {
 
 	}
 	grabEnv()
+	testcases = testcases[testFrom:testTo]
 	fmt.Println("Running as", mode, "...")
 	if mode == orchestratorMode {
 		orchestrate()
@@ -519,7 +519,7 @@ func (t *NetPerfRPC) ReceiveOutput(data *WorkerOutput, reply *int) error {
 			"from", testcase.SourceNode, "to", testcase.DestinationNode, "MsgSize:", msgSize) + data.Output
 		writeOutputFile(outputCaptureFile, outputLog)
 		bw = parseQperfTCPLatency(data.Output)
-		cpuSender, cpuReceiver = "na", "na" // parseIperfCPUUsage(data.Output)
+		cpuSender, cpuReceiver = "na", "na"
 		registerDataPoint(testcase.Label, msgSize, bw, currentJobIndex)
 
 	case iperfSctpTest:
